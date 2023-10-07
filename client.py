@@ -9,8 +9,9 @@ from tkinter import scrolledtext
 from tkinter import messagebox
 from tkinter import filedialog
 from PIL import Image, ImageTk
-HOST = '191.8.207.174'
-PORT = 25565
+
+HOST = '191.8.207.174' #191.8.207.174 / 127.0.0.1
+PORT = 25565 #25565 / 1234
 
 DARK_GREY = '#121212'
 MEDIUM_GREY = '#1F1B24'
