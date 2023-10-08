@@ -38,7 +38,6 @@ def connect():
     except Exception as e:
         messagebox.showerror("Unable to connect to server", f"Unable to connect to server {HOST} {PORT}")
         print(f"Connection error: {e}")
-        exit()
 
     username = username_textbox.get()
     if username != '':
