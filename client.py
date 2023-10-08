@@ -22,6 +22,7 @@ BUTTON_FONT = ("Helvetica", 15)
 SMALL_FONT = ("Helvetica", 13)
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.settimeout(1)    #Set how much time will try to connect to server. Can help when the server is Offline.
 
 def add_message(message):
     message_box.config(state=tk.NORMAL)
@@ -34,8 +35,10 @@ def connect():
         client.connect((HOST, PORT))
         print("Successfully connected to server")
         add_message("[SERVER] Successfully connected to the server")
-    except:
+    except Exception as e:
         messagebox.showerror("Unable to connect to server", f"Unable to connect to server {HOST} {PORT}")
+        print(f"Connection error: {e}")
+        exit()
 
     username = username_textbox.get()
     if username != '':
