@@ -69,7 +69,7 @@ def send_image():
         for i in range(0, len(buffer), 2048):
             client.sendall(buffer[i:i+2048])
 
-#Call funcion send_message
+#Function binded to event Key_Enter
 def on_enter(event):
     send_message()          
     
@@ -113,7 +113,7 @@ message_box = scrolledtext.ScrolledText(middle_frame, font=SMALL_FONT, bg=MEDIUM
 message_box.config(state=tk.DISABLED)
 message_box.pack(side=tk.TOP)
 
-#Bind the Enter Key to event on_enter
+#Bind the event Key_Enter to function on_enter
 root.bind('<Return>', on_enter)
 
 def listen_for_messages_from_server(client):
