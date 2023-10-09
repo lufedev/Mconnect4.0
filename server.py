@@ -4,6 +4,7 @@ import threading
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization
 HOST = '127.0.0.1'
 PORT = 1234 # You can use any port between 0 to 65535
 LISTENER_LIMIT = 5
@@ -28,9 +29,9 @@ def listen_for_messages(client, username):
                     send_images_to_all(username, buffer_imagem)
                 else:
                      # Received a text message
-                    decoded_message = message.decode('utf-8')
+                    decoded_message = message
                     print("DECODED: ", decoded_message)
-                    decrypt_message(keys[client]['private_key'], decoded_message)
+                    decoded_message = decrypt_message(keys[client]['private_key'], decoded_message)
                     send_messages_to_all(username, decoded_message)
             else:
                 print(f"The message send from client {username} is empty")
@@ -48,8 +49,11 @@ def generate_keys(client):
 
 # Function to encrypt a message with a public key
 def encrypt_message(public_key, message):
+    message_enc = message.encode()
+    print(type(message_enc))
+    print(message_enc)
     encrypted_message = public_key.encrypt(
-        message.encode(),
+        message_enc,
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
@@ -60,19 +64,20 @@ def encrypt_message(public_key, message):
 
 # Function to decrypt a message with a private key
 def decrypt_message(private_key, encrypted_message):
+    message = encrypted_message.decode('utf-8')
     decrypted_message = private_key.decrypt(
-        encrypted_message,
+        message,
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
             label=None
         )
-    ).decode()
+    )
     return decrypted_message
 
 # Function to send message to a single client
 def send_message_to_client(client, message):
-    client.sendall(message.encode())
+    client.sendall(message)
 def send_image_to_client(client, image_data):
     print("PARTE FINAL  ===========================")
     print(image_data)
@@ -83,7 +88,7 @@ def send_image_to_client(client, image_data):
 def send_messages_to_all(username, message):
     final_msg = username + '~' + message
     for user in active_clients:
-        encrypt_message(keys[user[1]]['public_key'], message)
+        final_msg = encrypt_message(keys[user[1]]['public_key'], final_msg)
         send_message_to_client(user[1], final_msg)
 
 def send_images_to_all(username, image_data):
@@ -100,8 +105,14 @@ def client_handler(client):
         if username != '':
             active_clients.append((username, client))
             generate_keys(client)
-            send_messages_to_all(username, "Acaba de entrar no chat!")
-            send_message_to_client(client, keys[client]['public_key'])
+            print(type(keys[client]['private_key']))
+            #gerar outra chave e enviar para o cliente tbm
+            send_message_to_client(client, (keys[client]['private_key'].private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            )))
+           # send_messages_to_all(username, "Acaba de entrar no chat!")
             prompt_message = f"{username} Acaba de entrar no chat!"
             send_messages_to_all(username, prompt_message)
             break

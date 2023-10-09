@@ -5,6 +5,10 @@ import tkinter as tk
 import io
 import pickle
 import base64
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization
 from tkinter import scrolledtext
 from tkinter import messagebox
 from tkinter import filedialog
@@ -20,7 +24,7 @@ WHITE = "white"
 FONT = ("Helvetica", 17)
 BUTTON_FONT = ("Helvetica", 15)
 SMALL_FONT = ("Helvetica", 13)
-
+keys = {}
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.settimeout(1)    #Set how much time will try to connect to server. Can help when the server is Offline.
 
@@ -118,25 +122,32 @@ root.bind('<Return>', on_enter)
 
 def listen_for_messages_from_server(client):
     while True:
-        try:
+        #try:
             message = client.recv(2048)
             if message:
-                print(message)
                 if message.startswith(b"IMAGE:"):
                     # Received image data
                     image_data = message[len(b"IMAGE:"):]
                     add_message( "SERVER","chegou uma foto cacete")
                     #display_received_image(image_data)
+                
+                elif message.startswith(b"---"):
+                    print("ITS A KEY!")
+
+                    private_key = serialization.load_pem_private_key(message, password=None)
+                    keys[client] = {'private': private_key}
+                    #Tratar se é uma chave publica ou privada, chave privada para leitura, publica para escrita
                 else:
                     # Received a text message
-                    decoded_message = message.decode('utf-8')
+                    decoded_message = decrypt_message(keys[client]['private'], message)
+                    print(type(decoded_message))
                     username = decoded_message.split("~")[0]
                     content = decoded_message.split('~')[1]
                     add_message(f"[{username}] {content}")
             else:
                 messagebox.showerror("Error", "Message received from the server is empty")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to receive message: {str(e)}")
+        #except Exception as e:
+        #    messagebox.showerror("Error", f"Failed to receive message: {str(e)}")
 
 def display_received_image(image_data):
     add_message("Chegou uma imagem :)")
@@ -155,6 +166,35 @@ def display_received_image(image_data):
         image_label.image = image_display
         image_label.pack(side=tk.TOP)
     """
+
+# Function to encrypt a message with a public key
+def encrypt_message(public_key, message):
+    message_enc = message.encode()
+    print(type(message_enc))
+    print(message_enc)
+    encrypted_message = public_key.encrypt(
+        message_enc,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return encrypted_message
+
+# Function to decrypt a message with a private key
+def decrypt_message(private_key, message):
+
+    decrypted_message = private_key.decrypt(
+        message,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return decrypted_message.decode('utf-8')
+
 # main function
 def main():
 
