@@ -25,8 +25,9 @@ FONT = ("Helvetica", 17)
 BUTTON_FONT = ("Helvetica", 15)
 SMALL_FONT = ("Helvetica", 13)
 keys = {}
+
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.settimeout(1)    #Set how much time will try to connect to server. Can help when the server is Offline.
+client.settimeout(1000)    #Set how much time will try to connect to server. Can help when the server is Offline.
 
 def add_message(message):
     message_box.config(state=tk.NORMAL)
@@ -57,21 +58,11 @@ def connect():
 def send_message():
     message = message_textbox.get()
     if message != '':
-        client.sendall(message.encode())
+        final_msg = encrypt_message(keys["write"]['public'], message)
+        client.sendall(final_msg)
         message_textbox.delete(0, len(message))
     else:
         messagebox.showerror("Empty message", "Message cannot be empty")
-def send_image():
-    file_path = filedialog.askopenfilename(title="Select an image")
-
-    with open(file_path, 'rb') as image_file:
-
-        #base64_bytes = b'1' + base64.b64encode(image_file.read())
-        #print(base64_bytes)
-        buffer = image_file.read()
-        client.sendall( b"IMAGE:" +bytearray((len(buffer)//2048)+1))
-        for i in range(0, len(buffer), 2048):
-            client.sendall(buffer[i:i+2048])
 
 #Function binded to event Key_Enter
 def on_enter(event):
@@ -110,9 +101,6 @@ message_textbox.pack(side=tk.LEFT, padx=10)
 message_button = tk.Button(bottom_frame, text="Send", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE, command=send_message)
 message_button.pack(side=tk.LEFT, padx=5)
 
-img_button = tk.Button(bottom_frame, text="IMG", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE, command=send_image)
-img_button.pack(side=tk.LEFT, padx=4)
-
 message_box = scrolledtext.ScrolledText(middle_frame, font=SMALL_FONT, bg=MEDIUM_GREY, fg=WHITE, width=100, height=26.5)
 message_box.config(state=tk.DISABLED)
 message_box.pack(side=tk.TOP)
@@ -122,56 +110,37 @@ root.bind('<Return>', on_enter)
 
 def listen_for_messages_from_server(client):
     while True:
-        #try:
+        try:
             message = client.recv(2048)
             if message:
-                if message.startswith(b"IMAGE:"):
-                    # Received image data
-                    image_data = message[len(b"IMAGE:"):]
-                    add_message( "SERVER","chegou uma foto cacete")
-                    #display_received_image(image_data)
-                
-                elif message.startswith(b"---"):
-                    print("ITS A KEY!")
+                if(message.startswith(b'--')):
+                    message_str = message.decode('utf-8')
+                    if "PRIVATE" in message_str:
+                        print("ITS A PRIVATE KEY!")
+                        private_key = serialization.load_pem_private_key(message, password=None)
+                        keys["read"] = {'private': private_key}
+                        add_message("[SERVER] Private key received")
+                        #Tratar se é uma chave publica ou privada, chave privada para leitura, publica para escrita
+                    elif "PUBLIC" in message_str:
+                        print("ITS A PUBLIC KEY!")
+                        public_key = serialization.load_pem_public_key(message)
+                        keys["write"] = {'public': public_key}
+                        add_message("[SERVER] Public key received")
 
-                    private_key = serialization.load_pem_private_key(message, password=None)
-                    keys[client] = {'private': private_key}
-                    #Tratar se é uma chave publica ou privada, chave privada para leitura, publica para escrita
                 else:
                     # Received a text message
-                    decoded_message = decrypt_message(keys[client]['private'], message)
-                    print(type(decoded_message))
+                    decoded_message = decrypt_message(keys["read"]['private'], message)
                     username = decoded_message.split("~")[0]
                     content = decoded_message.split('~')[1]
                     add_message(f"[{username}] {content}")
             else:
                 messagebox.showerror("Error", "Message received from the server is empty")
-        #except Exception as e:
-        #    messagebox.showerror("Error", f"Failed to receive message: {str(e)}")
-
-def display_received_image(image_data):
-    add_message("Chegou uma imagem :)")
-    with Image.frombytes("RGB",(1,100),image_data) as received_image:
-        received_image.thumbnail((400, 400))  # Adjust the size as needed
-        image_display = ImageTk.PhotoImage(received_image)
-        image_label = tk.Label(middle_frame, image=image_display, bg=MEDIUM_GREY)
-        image_label.image = image_display
-        image_label.pack(side=tk.TOP)
-
-    """
-    with pickle.loads(image_data) as received_image:
-        received_image.thumbnail((400, 400))  # Adjust the size as needed
-        image_display = ImageTk.PhotoImage(received_image)
-        image_label = tk.Label(middle_frame, image=image_display, bg=MEDIUM_GREY)
-        image_label.image = image_display
-        image_label.pack(side=tk.TOP)
-    """
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to receive message: {str(e)}")
 
 # Function to encrypt a message with a public key
 def encrypt_message(public_key, message):
     message_enc = message.encode()
-    print(type(message_enc))
-    print(message_enc)
     encrypted_message = public_key.encrypt(
         message_enc,
         padding.OAEP(
@@ -197,7 +166,6 @@ def decrypt_message(private_key, message):
 
 # main function
 def main():
-
     root.mainloop()
     
 if __name__ == '__main__':
