@@ -14,6 +14,8 @@ from tkinter import messagebox
 from tkinter import filedialog
 from PIL import Image, ImageTk
 
+# Constants and Global Variables
+# Server Constants
 HOST = '127.0.0.1' #191.8.207.174 / 127.0.0.1
 PORT = 1234 #25565 / 1234
 
@@ -29,11 +31,13 @@ keys = {}
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.settimeout(1000)    #Set how much time will try to connect to server. Can help when the server is Offline.
 
+# Add a message to the Message Box
 def add_message(message):
     message_box.config(state=tk.NORMAL)
     message_box.insert(tk.END, message + '\n')
     message_box.config(state=tk.DISABLED)
 
+# Connect to the server
 def connect():
     try:
         # Connect to the server
@@ -41,8 +45,11 @@ def connect():
         print("Successfully connected to server")
         add_message("[SERVER] Successfully connected to the server")
     except Exception as e:
-        messagebox.showerror("Unable to connect to server", f"Unable to connect to server {HOST} {PORT}")
+        #messagebox.showerror("Unable to connect to server", f"Unable to connect to server {HOST} {PORT}")
+        add_message(f"Unable to connect to server {HOST} {PORT}")
+        add_message("Try again later")
         print(f"Connection error: {e}")
+        return()
 
     username = username_textbox.get()
     if username != '':
@@ -55,6 +62,7 @@ def connect():
     username_textbox.config(state=tk.DISABLED)
     username_button.config(state=tk.DISABLED)
 
+# Send a message to server
 def send_message():
     message = message_textbox.get()
     if message != '':
@@ -62,52 +70,9 @@ def send_message():
         client.sendall(final_msg)
         message_textbox.delete(0, len(message))
     else:
-        messagebox.showerror("Empty message", "Message cannot be empty")
+        messagebox.showerror("Empty message", "Message cannot be empty")     
 
-#Function binded to event Key_Enter
-def on_enter(event):
-    send_message()          
-    
-root = tk.Tk()
-root.geometry("600x600")
-root.title("Messenger Client")
-root.resizable(False, False)
-
-root.grid_rowconfigure(0, weight=1)
-root.grid_rowconfigure(1, weight=4)
-root.grid_rowconfigure(2, weight=1)
-
-top_frame = tk.Frame(root, width=600, height=100, bg=DARK_GREY)
-top_frame.grid(row=0, column=0, sticky=tk.NSEW)
-
-middle_frame = tk.Frame(root, width=600, height=400, bg=MEDIUM_GREY)
-middle_frame.grid(row=1, column=0, sticky=tk.NSEW)
-
-bottom_frame = tk.Frame(root, width=600, height=100, bg=DARK_GREY)
-bottom_frame.grid(row=2, column=0, sticky=tk.NSEW)
-
-username_label = tk.Label(top_frame, text="Enter username:", font=FONT, bg=DARK_GREY, fg=WHITE)
-username_label.pack(side=tk.LEFT, padx=10)
-
-username_textbox = tk.Entry(top_frame, font=FONT, bg=MEDIUM_GREY, fg=WHITE, width=23)
-username_textbox.pack(side=tk.LEFT)
-
-username_button = tk.Button(top_frame, text="Join", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE, command=connect)
-username_button.pack(side=tk.LEFT, padx=15)
-
-message_textbox = tk.Entry(bottom_frame, font=FONT, bg=MEDIUM_GREY, fg=WHITE, width=32)
-message_textbox.pack(side=tk.LEFT, padx=10)
-
-message_button = tk.Button(bottom_frame, text="Send", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE, command=send_message)
-message_button.pack(side=tk.LEFT, padx=5)
-
-message_box = scrolledtext.ScrolledText(middle_frame, font=SMALL_FONT, bg=MEDIUM_GREY, fg=WHITE, width=100, height=26.5)
-message_box.config(state=tk.DISABLED)
-message_box.pack(side=tk.TOP)
-
-#Bind the event Key_Enter to function on_enter
-root.bind('<Return>', on_enter)
-
+# Listen to messages from the server
 def listen_for_messages_from_server(client):
     while True:
         try:
@@ -164,7 +129,66 @@ def decrypt_message(private_key, message):
     )
     return decrypted_message.decode('utf-8')
 
-# main function
+# Fuction binded to Enter key event
+def on_enter(event):
+    # If para mudar a funcao ativado por Enter key.
+    if (username_button.cget("state") == "normal"):
+        print("Event Enter, Connect")
+        connect()
+    elif (message_button.cget("state") == "normal"):
+        print("Event Enter, Send Message")
+        send_message()
+    else: 
+        print("Event Enter Fail")
+
+# Main GUI
+root = tk.Tk()
+root.geometry("600x600")
+root.title("Messenger Client")
+root.resizable(False, False)
+
+# Window Layout
+root.grid_rowconfigure(0, weight=1)
+root.grid_rowconfigure(1, weight=4)
+root.grid_rowconfigure(2, weight=1)
+
+top_frame = tk.Frame(root, width=600, height=100, bg=DARK_GREY)
+top_frame.grid(row=0, column=0, sticky=tk.NSEW)
+
+middle_frame = tk.Frame(root, width=600, height=400, bg=MEDIUM_GREY)
+middle_frame.grid(row=1, column=0, sticky=tk.NSEW)
+
+bottom_frame = tk.Frame(root, width=600, height=100, bg=DARK_GREY)
+bottom_frame.grid(row=2, column=0, sticky=tk.NSEW)
+
+# UI Elements and Widgets
+# Username Element
+username_label = tk.Label(top_frame, text="Enter username:", font=FONT, bg=DARK_GREY, fg=WHITE)
+username_label.pack(side=tk.LEFT, padx=10)
+
+username_textbox = tk.Entry(top_frame, font=FONT, bg=MEDIUM_GREY, fg=WHITE, width=23)
+username_textbox.pack(side=tk.LEFT)
+
+username_button = tk.Button(top_frame, text="Join", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE, command=connect)
+username_button.pack(side=tk.LEFT, padx=15)
+
+# Message Input Element
+message_textbox = tk.Entry(bottom_frame, font=FONT, bg=MEDIUM_GREY, fg=WHITE, width=32)
+message_textbox.pack(side=tk.LEFT, padx=10)
+
+message_button = tk.Button(bottom_frame, text="Send", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE, command=send_message)
+message_button.pack(side=tk.LEFT, padx=5)
+message_button.config(state="disabled")
+
+# Message Box Element
+message_box = scrolledtext.ScrolledText(middle_frame, font=SMALL_FONT, bg=MEDIUM_GREY, fg=WHITE, width=100, height=26.5)
+message_box.config(state=tk.DISABLED)
+message_box.pack(side=tk.TOP)
+
+# Bind Enter key event to on_enter function
+root.bind('<Return>', on_enter)
+
+# Main function
 def main():
     root.mainloop()
     
