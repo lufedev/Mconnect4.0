@@ -46,21 +46,26 @@ def connect():
         add_message("[SERVER] Successfully connected to the server")
     except Exception as e:
         #messagebox.showerror("Unable to connect to server", f"Unable to connect to server {HOST} {PORT}")
-        add_message(f"Unable to connect to server {HOST} {PORT}")
-        add_message("Try again later")
+        add_message(f"[Client] Unable to connect to server {HOST} {PORT}")
+        add_message("[Client] Try again later")
         print(f"Connection error: {e}")
         return()
 
+    # Check valid username
     username = username_textbox.get()
     if username != '':
         client.sendall(username.encode())
     else:
         messagebox.showerror("Invalid username", "Username cannot be empty")
 
+    # Create thread to listen messages from erver
     threading.Thread(target=listen_for_messages_from_server, args=(client, )).start()
 
+    # Change state of buttons
     username_textbox.config(state=tk.DISABLED)
     username_button.config(state=tk.DISABLED)
+    message_button.config(state=tk.NORMAL)
+    message_textbox.config(state=tk.NORMAL)
 
 # Send a message to server
 def send_message():
@@ -175,10 +180,11 @@ username_button.pack(side=tk.LEFT, padx=15)
 # Message Input Element
 message_textbox = tk.Entry(bottom_frame, font=FONT, bg=MEDIUM_GREY, fg=WHITE, width=32)
 message_textbox.pack(side=tk.LEFT, padx=10)
+message_textbox.config(state=tk.DISABLED)
 
 message_button = tk.Button(bottom_frame, text="Send", font=BUTTON_FONT, bg=OCEAN_BLUE, fg=WHITE, command=send_message)
 message_button.pack(side=tk.LEFT, padx=5)
-message_button.config(state="disabled")
+message_button.config(state=tk.DISABLED)
 
 # Message Box Element
 message_box = scrolledtext.ScrolledText(middle_frame, font=SMALL_FONT, bg=MEDIUM_GREY, fg=WHITE, width=100, height=26.5)
