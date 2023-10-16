@@ -45,9 +45,10 @@ def connect():
         print("Successfully connected to server")
         add_message("[SERVER] Successfully connected to the server")
     except Exception as e:
-        #messagebox.showerror("Unable to connect to server", f"Unable to connect to server {HOST} {PORT}")
-        add_message(f"[Client] Unable to connect to server {HOST} {PORT}")
-        add_message("[Client] Try again later")
+        # messagebox.showerror("Unable to connect to server", f"Unable to connect to server {HOST} {PORT}")
+        add_message(f"[CLIENT] Unable to connect to server {HOST} {PORT}")
+        add_message("[CLIENT] Try again later")
+        message_box.see(tk.END)
         print(f"Connection error: {e}")
         return()
 
@@ -61,11 +62,11 @@ def connect():
     # Create thread to listen messages from erver
     threading.Thread(target=listen_for_messages_from_server, args=(client, )).start()
 
-    # Change state of buttons
+    # Change state of button JOIN
     username_textbox.config(state=tk.DISABLED)
     username_button.config(state=tk.DISABLED)
-    message_button.config(state=tk.NORMAL)
-    message_textbox.config(state=tk.NORMAL)
+    # message_button.config(state=tk.NORMAL)
+    # message_textbox.config(state=tk.NORMAL)
 
 # Send a message to server
 def send_message():
@@ -83,6 +84,7 @@ def listen_for_messages_from_server(client):
         try:
             message = client.recv(2048)
             if message:
+                # Check if the received message is a special message
                 if(message.startswith(b'--')):
                     message_str = message.decode('utf-8')
                     if "PRIVATE" in message_str:
@@ -90,12 +92,14 @@ def listen_for_messages_from_server(client):
                         private_key = serialization.load_pem_private_key(message, password=None)
                         keys["read"] = {'private': private_key}
                         add_message("[SERVER] Private key received")
+                        check_keys()
                         #Tratar se é uma chave publica ou privada, chave privada para leitura, publica para escrita
                     elif "PUBLIC" in message_str:
                         print("ITS A PUBLIC KEY!")
                         public_key = serialization.load_pem_public_key(message)
                         keys["write"] = {'public': public_key}
                         add_message("[SERVER] Public key received")
+                        check_keys()
 
                 else:
                     # Received a text message
@@ -103,10 +107,18 @@ def listen_for_messages_from_server(client):
                     username = decoded_message.split("~")[0]
                     content = decoded_message.split('~')[1]
                     add_message(f"[{username}] {content}")
+                    message_box.see(tk.END)
             else:
                 messagebox.showerror("Error", "Message received from the server is empty")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to receive message: {str(e)}")
+            exit()
+
+def check_keys():
+    if len(keys) == 2:
+        message_button.config(state=tk.NORMAL)
+        message_textbox.config(state=tk.NORMAL)
+        add_message("[CLIENT] Chat Open")
 
 # Function to encrypt a message with a public key
 def encrypt_message(public_key, message):
